@@ -34,6 +34,7 @@ plotForecastErrors <- function(forecasterrors)
   points(myhist$mids, myhist$density, type="l", col="blue", lwd=2)
 }
 
+#Teste GIT2
 ######################################################
 #Leitura dos dados
 path <- getwd()
