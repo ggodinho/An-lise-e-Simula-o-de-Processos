@@ -34,7 +34,6 @@ plotForecastErrors <- function(forecasterrors)
   points(myhist$mids, myhist$density, type="l", col="blue", lwd=2)
 }
 
-#Teste GIT2
 ######################################################
 #Leitura dos dados
 path <- getwd()
@@ -103,44 +102,8 @@ fan(mc_distr, ln=c(1, 5, 25, 50, 75, 95, 99), alpha=0,ln.col="red")
 lines(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="black",lw = 3)
 axis(side=1, at=c(0,1:24))
 
+# Fazer bootstrap dos ruidos para STL
 #Comparar médias e QQPLOT da distribuição verificada em 2018 e distribuição simulada 
-
-######################################################
-# TBATS model (Exponential smoothing state space model with Box-Cox transformation, ARMA errors, Trend and Seasonal components) #
-######################################################
-
-seasonaldecomp <- tbats(series, seasonal.periods = c(24,8760))
-plot(seasonaldecomp) #decomposição da série
-tbats_components <- tbats.components(seasonaldecomp)
-tbats_remainder <- (tbats_components[,1] - tbats_components[,2] - 
-                      tbats_components[,3] - tbats_components[,4])
-plot(tbats_remainder)
-plotForecastErrors(tbats_remainder)
-mean_tbats <- mean(tbats_remainder)
-sd_tbats <- sd(tbats_remainder)
-
-tbats_agg <- (tbats_components[,2] + tbats_components[,3] + 
-                tbats_components[,4]) #Série com as componentes STL sem os ruídos
-plot(tbats_agg[1:96],ylim = c(0,1),type = "l")
-mc_tbats_series <-  tbats_agg + rnorm(n = 8760, mean = 0, sd = sd_tbats) #Série gerada via simulação de MonteCarlo dos resíduos
-lines(mc_tbats_series[1:24], ylim = c(0,1), type = "l",col="red")
-lines(tbats_agg[1:24],ylim = c(0,1),type = "l",lw=2)
-
-
-# Box.test(tbats_remainder, type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
-# plot(tbats_components[1:96,3],type = "l") # verificando sazonalidade
-# 
-# 
-# plot(seasonaldecomp$errors) #resíduos do modelo ajustado TBATS
-# tsdisplay(seasonaldecomp$errors, lag.max = 50)
-# Box.test(seasonaldecomp$errors, type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
-# plotForecastErrors(seasonaldecomp$errors)
-
-# Teste Qui-Quadrado
-#xfit_chi = seq(min(seasonaldecomp$errors), max(seasonaldecomp$errors), length = 13)
-#yfit_chi = dnorm(xfit_chi, mean = mean(seasonaldecomp$errors), sd = sd(seasonaldecomp$errors))
-#yfit_chi = yfit_chi * diff(res_seasonaldecomp$mids[1:2]) * length(seasonaldecomp$errors)
-#chisq.test(res_seasonaldecomp$counts, yfit_chi)
 
 ######################################################
 # Testando ETS #
@@ -177,10 +140,3 @@ tsdisplay(residuals(fit_arima2))
 
 forecast <- forecast(seasonaldecomp, h = 8760)
 plot(forecast)
-
-######################################################
-# Testando TBATS com limites Box Cox #
-######################################################
-seasonaldecomp2 <- tbats(series, seasonal.periods = c(24,8760),use.box.cox = "TRUE", bc.lower = 0, bc.upper = 1)
-plot(seasonaldecomp2) #decomposição da série
-components <- tbats.components(seasonaldecomp2)
