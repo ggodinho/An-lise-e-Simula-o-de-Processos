@@ -84,29 +84,7 @@ fan(mc_mstl_series[,1:(24*n_days)], ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red
 lines(colMeans(mc_mstl_series[,1:(24*n_days)]),ylim = c(0,1), type = "l", col = "black", lw = 2)
 axis(side=1, at=c(0,1:24))
 
-
 monthly_expscen_mstl <- colMeans(monthly_mean_mstl_series) #Valor esperado dos cenários para um dia típico
-
-#Distribuição de fatores de capacidade para cada hora do mês [31*n_series,24]
-mc_mstl_distr <- array(dim = c(31*n_series,24))
-for (i in 1:24){
-  for (s in 1:n_series){
-    for (d in 1:31){
-      
-      mc_mstl_distr[(s-1)*31+d,i] <- mc_mstl_series[s,(d-1)*24+i] 
-    }
-  }
-}
-fan(mc_mstl_distr, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
-lines(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="black",lw = 3)
-axis(side=1, at=c(0,1:24))
-
-# Fan plot com a distribuição em um dia típico de janeiro
-plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue")
-for (i in 1:(31*n_series)){
-  lines(mc_mstl_distr[i,],ylim = c(0,1), type = "l", col=alpha("blue",0.02))
-}
-
 
 #Outras opções para fanplot
 #plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue")
