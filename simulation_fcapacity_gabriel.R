@@ -8,6 +8,8 @@ library(ggplot2)
 library(xts)
 library(fanplot)
 library(boot)
+library(fitdistrplus)
+library(logspline)
 # https://otexts.org/fpp2/forecasting-decomposition.html
 ###############################################################################
 # FUNÁ√O PARA CONSTRU«√O DOS GR¡FICOS DE FORECAST ERRORS ######################
@@ -39,16 +41,15 @@ plotForecastErrors <- function(forecasterrors)
 path <- getwd()
 csv = read.csv2("./fcapacidade.csv",header=FALSE)
 
-## An·lise da DistribuiÁ„o da sÈrie ##
+## An·lise da DistribuiÁ„o da sÈrie ##################
 series <- ts(csv[,2], frequency = 24)
 adf.test(series, alternative = "stationary") #SÈrie È estacion·ria, se rejeita hipÛtese nula
 
-h=hist(series,main = "F. Capacidade - Nordeste", xlab = "%",
-       ylab = "FrequÍncia", ylim = c(0,1500))
-xfit = seq(min(series), max(series), length = 40) #Para o gr·fico, utilizou-se length = 40
-yfit = dnorm(xfit, mean = mean(series), sd = sd(series))
-yfit = yfit * diff(h$mids[1:2]) * length(series)
-lines(xfit, yfit, col = "blue", lwd = 2)
+#https://stats.stackexchange.com/questions/132652/how-to-determine-which-distribution-fits-my-data-best
+# DistribuiÁıes candidatas:
+descdist(csv[,2], discrete = FALSE) #Provavelmente Uniforme ou Normal
+fit.normal <- fitdist(csv[,2],"norm")
+plot(fit.normal)
 
 
 ######################################################
@@ -63,46 +64,64 @@ mean_mstl <- mean(mstl_decomp[,4]) #MÈdia ~ 0
 sd_mstl <- sd(mstl_decomp[,4]) #Desvio padr„o
 mstl_agg <- mstl_decomp[,2] + mstl_decomp[,3] #SÈrie STL (sem remainder)
 
-plot(mstl_agg[1:744],ylim = c(0,1), type = "l", col = "red")
-
 #Simulando Monte Carlo
 n_series <- 100
 mc_mstl_series <- array(dim = c(n_series,744))
 monthly_mean_mstl_series <- array(dim = c(n_series,24))
+n_days = 1 #Quantos dias plotar
 
+plot(mstl_agg[1:(24*n_days)],ylim = c(0,1), type = "l", col = "red")
 for (i in 1:n_series){
-  set.seed(i^2);mc_mstl_series[i,] <- mstl_agg[1:744] + rnorm(n = 744, mean = 0, sd = sd_mstl)
+  set.seed(i^2);mc_mstl_series[i,] <- mstl_agg[1:(24*n_days)] + 
+    rnorm(n = 744, mean = 0, sd = sd_mstl)
   mstl_series_matrix <- transpose(data.table(matrix(mc_mstl_series[i,],24,31)))
   monthly_mean_mstl_series[i,] <- colMeans(mstl_series_matrix)
-  lines(mc_mstl_series[i,],ylim = c(0,1), type = "l", col="gray")
+  lines(mc_mstl_series[i,1:(24*n_days)],ylim = c(0,1), type = "l", 
+        col=alpha("gray",0.5))
 }
 
-lines(colMeans(mc_mstl_series),ylim = c(0,1), type = "l", col = "red", lw = 2)
-#lines(mstl_agg[1:744],ylim = c(0,1), type = "l", col = "red",lw=2)
+fan(mc_mstl_series[,1:(24*n_days)], ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
+lines(colMeans(mc_mstl_series[,1:(24*n_days)]),ylim = c(0,1), type = "l", col = "black", lw = 2)
+axis(side=1, at=c(0,1:24))
+
+
 monthly_expscen_mstl <- colMeans(monthly_mean_mstl_series) #Valor esperado dos cen·rios para um dia tÌpico
 
-#DistribuiÁ„o de fatores de capacidade para cada hora do mÍs [31*100,24]
-mc_distr <- array(dim = c(31*n_series,24))
+#DistribuiÁ„o de fatores de capacidade para cada hora do mÍs [31*n_series,24]
+mc_mstl_distr <- array(dim = c(31*n_series,24))
 for (i in 1:24){
   for (s in 1:n_series){
     for (d in 1:31){
       
-      mc_distr[(s-1)*31+d,i] <- mc_mstl_series[s,(d-1)*24+i] 
+      mc_mstl_distr[(s-1)*31+d,i] <- mc_mstl_series[s,(d-1)*24+i] 
     }
   }
 }
-
-# Fan plot com a distribuiÁ„o em um dia tÌpico de janeiro
-plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue")
-for (i in 1:3100){
-  lines(mc_distr[i,],ylim = c(0,1), type = "l", col=alpha("gray",0.1))
-}
-#fan(mc_distr,fan.col=colorRampPalette(c("royalblue", "grey", "white")))
-fan(mc_distr, ln=c(1, 5, 25, 50, 75, 95, 99), alpha=0,ln.col="red")
+fan(mc_mstl_distr, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
 lines(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="black",lw = 3)
 axis(side=1, at=c(0,1:24))
 
-# Fazer bootstrap dos ruidos para STL
+# Fan plot com a distribuiÁ„o em um dia tÌpico de janeiro
+plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue")
+for (i in 1:(31*n_series)){
+  lines(mc_mstl_distr[i,],ylim = c(0,1), type = "l", col=alpha("blue",0.02))
+}
+
+
+#Outras opÁıes para fanplot
+#plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue")
+#fan(mc_distr,fan.col = sequential_hcl,ln=c(5, 25, 50, 75, 95))
+#fan(mc_distr,ln=c(5, 25, 50, 75, 95), style = "spaghetti",n.spag = 100)
+#fan(mc_mstl_distr, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
+
+# Fazer bootstrap dos ruidos para MSTL
+
+######################################################
+# MSTL + Bootstrap #
+######################################################
+
+mstl_boot <- array(dim = c(n_series,length(series)))
+
 #Comparar mÈdias e QQPLOT da distribuiÁ„o verificada em 2018 e distribuiÁ„o simulada 
 
 ######################################################
@@ -140,3 +159,9 @@ tsdisplay(residuals(fit_arima2))
 
 forecast <- forecast(seasonaldecomp, h = 8760)
 plot(forecast)
+
+##
+##save as png
+##
+# dev.copy(png, file = "svplots.png", width=10, height=50, units="in", res=400)
+# dev.off()
