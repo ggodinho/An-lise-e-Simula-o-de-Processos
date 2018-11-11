@@ -49,7 +49,7 @@ modelo_vigente <- as.matrix(read.csv2("./Modelo_Vigente.csv")) #Séries usadas no
 # Análise da Distribuição da série #
 ######################################################
 series <- ts(csv[,2], frequency = 24)
-adf.test(series, alternative = "stationary") #Série é estacionária, se rejeita hipótese nula
+adf.test(series, alternative = "explosive",k=744) #H0 (estacionaria) não rejeitada com 5% de significânica. p-valor = 0,099
 
 #https://stats.stackexchange.com/questions/132652/how-to-determine-which-distribution-fits-my-data-best
 # Distribuições candidatas:
@@ -61,10 +61,8 @@ plot(fit.normal)
 ######################################################
 # Decompondo com MSTL #
 ######################################################
-mstl_decomp <- mstl(series, iterate = 10, t.window = 730, s.window = 24)
+mstl_decomp <- mstl(series, iterate = 10, t.window=730, s.window = 24)
 plot(mstl_decomp)
-plotForecastErrors(mstl_decomp[,4])
-Box.test(mstl_decomp[,4], type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
 
 mstl_agg <- mstl_decomp[,2] + mstl_decomp[,3] #Série STL (sem remainder)
 mstl_agg_jan <- array(dim = c(31,24)) #Série STL média de janeiro
@@ -74,10 +72,18 @@ for (d in 1:31){
   }
 }
 mstl_agg_jan <- colMeans(mstl_agg_jan)
-  
+
 mstl_res <- mstl_decomp[,4] #Remainder
 mean_mstl <- mean(mstl_decomp[,4]) #Média ~ 0
 sd_mstl <- sd(mstl_decomp[,4]) #Desvio padrão
+
+descdist(as.vector(mstl_res), discrete = FALSE) #Provavelmente Uniforme ou Normal
+fit.res <- fitdist(as.vector(mstl_res),"norm")
+plot(fit.res)
+plotForecastErrors(mstl_decomp[,4])
+Box.test(mstl_decomp[,4], type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
+tsdisplay(mstl_decomp[,4])
+
 
 ######################################################
 # MSTL + MonteCarlo #
@@ -89,6 +95,8 @@ remainder_mc <- function(n_series,sinal,mean_mc,sd_mc)
   mc_mstl_series <- array(dim = c(n_series,24))
   monthly_mean_mstl_series <- array(dim = c(n_series,24))
   
+  plot(mstl_agg_jan, type = "l",ylim = c(0,1), col="blue",
+       ylab = "Capacity Factor", xlab = "Hour")
   for (i in 1:n_series){
     set.seed(i^2);mc_mstl_series[i,] <- mstl_agg_jan + 
       rnorm(n = 24, mean_mc, sd_mc)
@@ -212,8 +220,9 @@ legend("bottomright",legend = c("Current Model","MSTL+Bootstrap"),
        col=c("red","blue"), lwd = c(2,2), lty= c(1,2), bty="n")
 
 # Comparando a densidade de distribuição das séries
+#d1=density(series[1:744])
 d1=density(verif2018)
-d2=density(amostras_boot_MBB)           
+d2=density(montecarlo_series)           
 d3=density(modelo_vigente[,2:25])
            
 plot(d1,ylim=c(0,6), lwd = 1, xlab = "Capacity Factor",xlim=c(0,1),
@@ -221,10 +230,10 @@ plot(d1,ylim=c(0,6), lwd = 1, xlab = "Capacity Factor",xlim=c(0,1),
 polygon(d1,col=alpha("gray",0.5))
 lines(d2, col = "blue",lty=2,lwd=2)
 lines(d3, col = "red",lwd=2)
-legend("topright", legend = c("Time Series","MSTL+Bootstrap","Current Model"),
+legend("topright", legend = c("Observed Values 2017","MSTL+Bootstrap","Current Model"),
        bty="n", fill=c(alpha("gray",0.5), NA,NA),xpd=T,lty=c(NA,2,1),
-       border = c("light blue", NA,NA),horiz=F,col=c(0,"blue","red"),
-       pch = c(0,-1,-1))
+       border = c("black", NA,NA),horiz=F,col=c(0,"blue","red"),
+       pch = c(0,-1,-1),lwd = c(NA,2,2))
 
 ######################################################
 # Comparando com a série verificada out-of-sample #
@@ -283,6 +292,16 @@ lines(hmape_mstl_boot,type = "l", lwd=2, col = "green")
 legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"),
        bty="n", xpd=T,lty=c(1,1,1), horiz=F,
        col=c("red","blue","green"),lwd = c(2,2,2))
+
+
+#Criar função para calcular MAPE de acordo com o número de séries
+#Avaliar bootstrap da propria série no mês de janeiro (bootstrapando janeiro)
+
+
+######################################################
+# Bootstrap da série + Modelo ETS #
+######################################################
+
 
 ######################################################
 # Testando ETS #
