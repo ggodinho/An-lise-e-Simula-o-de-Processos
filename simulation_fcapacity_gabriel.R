@@ -48,7 +48,7 @@ modelo_vigente <- as.matrix(read.csv2("./Modelo_Vigente.csv")) #Séries usadas no
 ######################################################
 # Análise da Distribuição da série #
 ######################################################
-series <- ts(csv[,2], frequency = 24)
+series <- msts(csv[,2], seasonal.periods = c(24,8760))
 adf.test(series, alternative = "explosive",k=744) #H0 (estacionaria) não rejeitada com 5% de significânica. p-valor = 0,099
 
 #https://stats.stackexchange.com/questions/132652/how-to-determine-which-distribution-fits-my-data-best
@@ -61,7 +61,7 @@ plot(fit.normal)
 ######################################################
 # Decompondo com MSTL #
 ######################################################
-mstl_decomp <- mstl(series, iterate = 10, t.window=730, s.window = 24)
+mstl_decomp <- mstl(series, iterate = 10, t.window = 730)
 plot(mstl_decomp)
 
 mstl_agg <- mstl_decomp[,2] + mstl_decomp[,3] #Série STL (sem remainder)
@@ -299,8 +299,19 @@ legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"
 
 
 ######################################################
-# Bootstrap da série + Modelo ETS #
+# Decompondo via TBATS #
 ######################################################
+
+#tbats_decomp <- tbats(series, seasonal.periods = c(24,8760))
+plot(tbats_decomp) #decomposição da série
+components <- tbats.components(tbats_decomp)
+
+plot(tbats_decomp$errors) #resíduos
+sd(tbats_decomp$errors)
+tsdisplay(seasonaldecomp$errors, lag.max = 50)
+
+Box.test(seasonaldecomp$errors, type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
+plotForecastErrors(seasonaldecomp$errors)
 
 
 ######################################################
