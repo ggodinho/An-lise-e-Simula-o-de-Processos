@@ -1,6 +1,6 @@
 # Função para simulação de MonteCarlo dos ruídos (dist. Normal)
 
-remainder_mc <- function(n_series,sinal,mean_mc,sd_mc)
+remainder_mc <- function(n_series,sinal,mean_mc,sd_mc,label)
   #function(numero de series, série STL ou sinal, média dos ruidos, desvio padrao dos ruidos)
 {
   #n_series <- 1000
@@ -38,8 +38,8 @@ remainder_mc <- function(n_series,sinal,mean_mc,sd_mc)
   
   monthly_expscen_mstl <- colMeans(mc_mstl_distr) #Valor esperado dos cenários para um dia típico
   
-  assign("montecarlo_series",mc_mstl_distr, envir= .GlobalEnv)
-  assign("montecarlo_series_mean",monthly_expscen_mstl,envir= .GlobalEnv)
+  assign(paste(label,"_montecarlo",sep=""),mc_mstl_distr, envir= .GlobalEnv)
+  assign(paste(label,"_montecarlo_mean",sep=""),monthly_expscen_mstl,envir= .GlobalEnv)
   
   #Outras opções para fanplot
   plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue",

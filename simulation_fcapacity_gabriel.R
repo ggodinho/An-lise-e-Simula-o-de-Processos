@@ -71,13 +71,14 @@ tsdisplay(mstl_decomp[,4])
 # MSTL + MonteCarlo #
 ######################################################
 
-remainder_mc(100,mstl_agg,0,sd_mstl) #Monta 2 gráficos
+remainder_mc(100,mstl_agg,0,sd_mstl,"mstl") #Monta 2 gráficos
 
 ######################################################
 # MSTL + Bootstrap #
 ######################################################
 
-MBB_function(100,mstl_agg,mstl_res,l = 48,31,T) #Monta 2 gráficos
+MBB_function(100,mstl_agg,mstl_res,l = 48,n_days = 31,graf = T,
+             label = "mstl") #Monta 2 gráficos
 
 ######################################################
 # ARIMA #
@@ -128,27 +129,28 @@ lines(apply(simArima_bt, 2, mean), lwd = 2, col = "red")
 ######################################################
 # Comparando com Modelo Vigente #
 ######################################################
-prob_curmodel = modelo_vigente[,26]
+prob_modelo_vigente = modelo_vigente[,26]
 
-exp_curmodel = (modelo_vigente[1,2:25]*prob_curmodel[1]+
-                  modelo_vigente[2,2:25]*prob_curmodel[2]+
-                  modelo_vigente[3,2:25]*prob_curmodel[3])
+#Valor esperado Modelo Vigente
+modelo_vigente_exp = (modelo_vigente[1,2:25]*prob_modelo_vigente[1]+
+                  modelo_vigente[2,2:25]*prob_modelo_vigente[2]+
+                  modelo_vigente[3,2:25]*prob_modelo_vigente[3])
 
 #Comparando MSTL+MonteCarlo
-benchmark_comp(montecarlo_series,montecarlo_series_mean,modelo_vigente,
-               exp_curmodel,"MSTL+MonteCarlo")
+benchmark_comp(mstl_montecarlo,mstl_montecarlo_mean,modelo_vigente,
+               modelo_vigente_exp,"MSTL+MonteCarlo")
 
 #Comparando MSTL+Bootstrap
-benchmark_comp(amostras_boot_MBB,amostras_boot_MBB_mean,modelo_vigente,
-               exp_curmodel,"MSTL+Bootstrap")
+benchmark_comp(mstl_boot,mstl_boot_mean,modelo_vigente,
+               modelo_vigente_exp,"MSTL+Bootstrap")
 
 #Comparando ARIMA+MonteCarlo
 benchmark_comp(simArima,apply(simArima, 2, mean),modelo_vigente,
-               exp_curmodel,"ARIMA+MonteCarlo")
+               modelo_vigente_exp,"ARIMA+MonteCarlo")
 
 #Comparando ARIMA+Bootstrap
 benchmark_comp(simArima_bt,apply(simArima_bt, 2, mean),modelo_vigente,
-               exp_curmodel,"ARIMA+Bootstrap")
+               modelo_vigente_exp,"ARIMA+Bootstrap")
 
 ######################################################
 # Comparando com a série verificada out-of-sample #
@@ -164,8 +166,8 @@ verif2018_mean <- colMeans(verif2018_m)
 plot(verif2018,type="l",ylim=c(0,1))
 
 observedvalues_comp(verif2018_m,modelo_vigente,"Current Model")
-observedvalues_comp(verif2018_m,montecarlo_series,"MSTL+MonteCarlo")
-observedvalues_comp(verif2018_m,amostras_boot_MBB,"MSTL+Bootstrap")
+observedvalues_comp(verif2018_m,mstl_montecarlo,"MSTL+MonteCarlo")
+observedvalues_comp(verif2018_m,mstl_boot,"MSTL+Bootstrap")
 observedvalues_comp(verif2018_m,simArima,"ARIMA+MonteCarlo")
 observedvalues_comp(verif2018_m,simArima_bt,"ARIMA+Bootstrap")
 
@@ -176,9 +178,9 @@ for(i in 2:31){
   lines(verif2018_m[i,],col = "gray")
 }
 lines(verif2018_mean,type = "l", ylim = c(0,1),lwd=2, col = alpha("black",0.5))
-lines(exp_curmodel,type = "l", ylim = c(0,1),lwd=2, col = "red")
-lines(montecarlo_series_mean,type = "l", ylim = c(0,1),lwd=2, col = "blue")
-lines(amostras_boot_MBB_mean,type = "l", ylim = c(0,1),lwd=2, col = "green")
+lines(modelo_vigente_exp,type = "l", ylim = c(0,1),lwd=2, col = "red")
+lines(mstl_montecarlo_mean,type = "l", ylim = c(0,1),lwd=2, col = "blue")
+lines(mstl_boot_mean,type = "l", ylim = c(0,1),lwd=2, col = "green")
 legend("topright", legend = c("Observed Values 2018","Current Model",
                               "MSTL+MonteCarlo","MSTL+Bootstrap"),
        bty="n", xpd=T,lty=c(1,1,1,1), horiz=F,
@@ -196,9 +198,9 @@ MAPE <- function(model_mean,observed_mean,label){
   assign(name,mape,envir = .GlobalEnv)
 }
 
-MAPE(exp_curmodel,verif2018_mean,"curmodel")
-MAPE(montecarlo_series_mean,verif2018_mean,"mstl_montecarlo")
-MAPE(amostras_boot_MBB_mean,verif2018_mean,"mstl_boot")
+MAPE(modelo_vigente_exp,verif2018_mean,"curmodel")
+MAPE(mstl_montecarlo_mean,verif2018_mean,"mstl_montecarlo")
+MAPE(mstl_boot_mean,verif2018_mean,"mstl_boot")
 MAPE(apply(simArima, 2, mean),verif2018_mean,"arima_montecarlo")
 MAPE(apply(simArima_bt, 2, mean),verif2018_mean,"arima_boot")
 
@@ -212,9 +214,9 @@ windowmape <- function(model_mean,verified_mean,window)
   assign("monthlymape",aux, envir= .GlobalEnv)
 }
 
-hmape_curmodel <- windowmape(exp_curmodel,verif2018_mean,24)
-hmape_mstl_montecarlo <- windowmape(montecarlo_series_mean,verif2018_mean,24)
-hmape_mstl_boot <- windowmape(amostras_boot_MBB_mean,verif2018_mean,24)
+hmape_curmodel <- windowmape(modelo_vigente_exp,verif2018_mean,24)
+hmape_mstl_montecarlo <- windowmape(mstl_montecarlo_mean,verif2018_mean,24)
+hmape_mstl_boot <- windowmape(mstl_boot_mean,verif2018_mean,24)
 hmape_arima_mc <- windowmape(apply(simArima, 2, mean),verif2018_mean,24)
 hmape_arima_boot <- windowmape(apply(simArima_bt, 2, mean),verif2018_mean,24)
 
@@ -236,7 +238,7 @@ legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"
 ######################################################
 # Ficou pior do que a decomposição MSTL
 
-#tbats_decomp <- tbats(series, seasonal.periods = c(24,8760))
+#tbats_decomp <- tbats(series)
 plot(tbats_decomp) #decomposição da série
 tbats_components <- tbats.components(tbats_decomp)
 
@@ -250,8 +252,11 @@ plot(tbats_dist)
 
 tbats_signal <- tbats_components[,2] + tbats_components[,3]+tbats_components[,4]
 
-remainder_mc(100,tbats_signal,0,sd_tbats)
-MBB_function(100,tbats_signal,tbats_decomp$errors,48,31,T)
+remainder_mc(100,tbats_signal,0,sd_tbats,"TBATS")
+MBB_function(100,tbats_signal,tbats_decomp$errors,48,31,T,"TBATS")
+MAPE(amostras_boot_MBB_mean,verif2018_mean,"tbats_boot")
+benchmark_comp(amostras_boot_MBB,amostras_boot_MBB_mean,
+               modelo_vigente,exp_curmodel,"TBATS+Bootstrap")
 
 # 
 # ##

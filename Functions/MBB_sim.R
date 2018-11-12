@@ -3,7 +3,7 @@
 # function(numero de series, STL, Residuos, 
 # tamanho do bloco, numero de dias, plotar graficos? (T ou F)))
 
-MBB_function <- function(n_series,sinal,residuos,l,n_days,graf)
+MBB_function <- function(n_series,sinal,residuos,l,n_days,graf,label)
 {
   n = length(residuos)
   #l = 48
@@ -39,9 +39,9 @@ MBB_function <- function(n_series,sinal,residuos,l,n_days,graf)
   }
   
   mstl_boot_mean <- colMeans(boot_mstl_distr)
-  assign("amostras_boot_MBB",boot_mstl_distr, envir= .GlobalEnv)
-  assign("amostras_boot_MBB_mean",mstl_boot_mean, envir= .GlobalEnv)
-  assign("amostras_boot_MBB_total",amostras_boot_MBB_, envir= .GlobalEnv)
+  assign(paste(label,"_boot",sep=""),boot_mstl_distr, envir= .GlobalEnv)
+  assign(paste(label,"_boot_mean",sep=""),mstl_boot_mean, envir= .GlobalEnv)
+  assign(paste(label,"_boot_total",sep=""),amostras_boot_MBB_, envir= .GlobalEnv)
   
   if (graf == T){
     plot(amostras_boot_MBB_mean[1:(24*n_days)],type = "l",ylim = c(0,1),ylab = "Capacity Factor",
