@@ -93,7 +93,7 @@ fit_arima2 <- Arima(series,order=c(4,1,1),seasonal=list(order=c(2,0,1),period=24
 summary(fit_arima2)
 tsdisplay(residuals(fit_arima2),lag.max=100)
 
-simArima = arima.sim(model = fit_arima, n = 100, rand.gen = rnorm) #arima.sim não simula modelos 
+#simArima = arima.sim(model = fit_arima, n = 100, rand.gen = rnorm) #arima.sim não simula modelos 
 
 cenarioHorizonte = 24
 nCen = 100
@@ -221,7 +221,7 @@ hmape_arima_mc <- windowmape(apply(simArima, 2, mean),verif2018_mean,24)
 hmape_arima_boot <- windowmape(apply(simArima_bt, 2, mean),verif2018_mean,24)
 
 
-plot(hmape_curmodel,type="l",lwd=2,xlab="Hour", ylab="MAPE (%)",ylim = c(0,40), 
+plot(hmape_curmodel,type="l",lwd=2,xlab="Hour", ylab="MAPE (%)",ylim = c(0,20), 
      main = "Hourly MAPE",col = "red")
 lines(hmape_mstl_montecarlo,type = "l",lwd=2, col = "blue")
 lines(hmape_mstl_boot,type = "l", lwd=2, col = "cyan", lty=2)
@@ -254,9 +254,9 @@ tbats_signal <- tbats_components[,2] + tbats_components[,3]+tbats_components[,4]
 
 remainder_mc(100,tbats_signal,0,sd_tbats,"TBATS")
 MBB_function(100,tbats_signal,tbats_decomp$errors,48,31,T,"TBATS")
-MAPE(amostras_boot_MBB_mean,verif2018_mean,"tbats_boot")
-benchmark_comp(amostras_boot_MBB,amostras_boot_MBB_mean,
+benchmark_comp(TBATS_boot,TBATS_boot_mean,
                modelo_vigente,exp_curmodel,"TBATS+Bootstrap")
+MAPE(TBATS_boot_mean,verif2018_mean,"tbats_boot")
 
 # 
 # ##
