@@ -11,6 +11,7 @@ library(boot)
 library(fitdistrplus)
 library(logspline)
 library(colorspace)
+
 # https://otexts.org/fpp2/forecasting-decomposition.html
 source("./Functions/plotForecastErrors.R")
 source("./Functions/MonteCarlo_sim.R")
@@ -76,7 +77,7 @@ remainder_mc(100,mstl_agg,0,sd_mstl) #Monta 2 gráficos
 # MSTL + Bootstrap #
 ######################################################
 
-MBB_function(100,mstl_agg,mstl_res,l = 48,31,F) #Monta 2 gráficos
+MBB_function(100,mstl_agg,mstl_res,l = 48,31,T) #Monta 2 gráficos
 
 ######################################################
 # Comparando com Modelo Vigente #
@@ -161,10 +162,6 @@ legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"
        bty="n", xpd=T,lty=c(1,1,1), horiz=F,
        col=c("red","blue","green"),lwd = c(2,2,2))
 
-
-#Criar função para calcular MAPE de acordo com o número de séries
-#Avaliar bootstrap da propria série no mês de janeiro (bootstrapando janeiro)
-
 ######################################################
 # Decompondo via TBATS #
 ######################################################
@@ -187,76 +184,6 @@ tbats_signal <- tbats_components[,2] + tbats_components[,3]+tbats_components[,4]
 remainder_mc(100,tbats_signal,0,sd_tbats)
 MBB_function(100,tbats_signal,tbats_decomp$errors,48,31,T)
 
-######################################################
-# Testando Bootstrap + ETS #
-######################################################
-# sinal_ETS <- as.vector(array(0L,dim = 8760))
-# res_ETS <- series
-# 
-# MBB_function(100,sinal_ETS,res_ETS,48,31,F)
-# #Não respeitou a janela dos dias...
-# 
-# ets_boot_fc <- array(dim = c(50,24))
-# for(i in 1:50){
-#   ets_boot <- auto.arima(amostras_boot_MBB_total[,i])
-#   aux <- forecast(ets_boot,24)
-#   ets_boot_fc[i,] <- aux$mean
-# }
-# 
-# ets_boot_mean <- colMeans(ets_boot_fc)
-# #Plotando os gráficos
-# plot(amostras_boot_MBB[1,1:24],type = "l",ylim = c(0,1),ylab = "Capacity Factor",
-#      xlab = "Hour")
-# for (i in 2:50){
-#   lines(amostras_boot_MBB[i,1:24],col=alpha("gray",0.5))
-# }
-# 
-# fan(amostras_boot_MBB[,1:24], ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
-# lines(amostras_boot_MBB_mean[1:(24*n_days)], lw=2)
-# #axis(side=1, at=c(0,1:24))
-# 
-# #fanplot #2
-# plot(mstl_boot_mean, type = "l",ylim = c(0,1), col="blue",ylab = "Capacity Factor",
-#      xlab = "Hour")
-# fan(boot_mstl_distr,fan.col = sequential_hcl,ln=c(5, 25, 50, 75, 95))
-# lines(mstl_boot_mean, type = "l",ylim = c(0,1), col="black")
-# axis(side=1, at=c(0,1:24))
-
-######################################################
-# Testando ETS #
-######################################################
-# ets_decomp <- ets(series)
-# plot(ets_decomp)
-# set.seed(0)
-# 
-# ets_series <- array(dim = c(n_series,744))
-# for (k in 1:n_series){
-#   ets_series[k,] <- simulate(ets_decomp, nsim = 744, seed = k)
-# }
-# 
-# plot(ets_series[1,], ylim = c(0,1),col = "gray", type = "line")
-# for (k in 2:n_series){
-#   lines(ets_series[k,], ylim = c(0,1),col = "gray", type = "line")
-# }
-# 
-# ets_series_mean <- colMeans(ets_series)
-# lines(ets_series_mean, ylim = c(0,1),col = "red", type = "line",lwd=2)
-# 
-# 
-# ######################################################
-# # Ajustando um modelo SARIMA #
-# ######################################################
-# 
-# fit_arima <- auto.arima(series)
-# summary(fit_arima)
-# tsdisplay(residuals(fit_arima))
-# 
-# fit_arima2 <- Arima(series,order=c(4,1,1),seasonal=list(order=c(2,0,1),period=24))
-# summary(fit_arima2)
-# tsdisplay(residuals(fit_arima2))
-# 
-# forecast <- forecast(seasonaldecomp, h = 8760)
-# plot(forecast)
 # 
 # ##
 # ##save as png
