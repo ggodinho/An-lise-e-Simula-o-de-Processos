@@ -71,7 +71,8 @@ tsdisplay(mstl_decomp[,4])
 # MSTL + MonteCarlo #
 ######################################################
 
-remainder_mc(100,mstl_agg,0,sd_mstl,"mstl") #Monta 2 gráficos
+remainder_mc(100,mstl_agg,0,sd_mstl,day_ini = 1,n_days = 31,"mstl",
+             graf = TRUE) #Monta 2 gráficos
 
 ######################################################
 # MSTL + Bootstrap #
@@ -238,25 +239,49 @@ legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"
 ######################################################
 # Ficou pior do que a decomposição MSTL
 
-#tbats_decomp <- tbats(series)
-plot(tbats_decomp) #decomposição da série
-tbats_components <- tbats.components(tbats_decomp)
+##tbats_decomp <- tbats(series)
+#plot(tbats_decomp) #decomposição da série
+#tbats_components <- tbats.components(tbats_decomp)
+#
+#plot(tbats_decomp$errors) #resíduos
+#sd_tbats <- sd(tbats_decomp$errors)
+#tsdisplay(tbats_decomp$errors, lag.max = 50)
+#
+#Box.test(tbats_decomp$errors, type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
+#tbats_dist <- fitdist(as.vector(tbats_decomp$errors),"norm")
+#plot(tbats_dist)
+#
+#tbats_signal <- tbats_components[,2] + tbats_components[,3]+tbats_components[,4]
+#
+#remainder_mc(100,tbats_signal,0,sd_tbats,"TBATS")
+#MBB_function(100,tbats_signal,tbats_decomp$errors,48,31,T,"TBATS")
+#benchmark_comp(TBATS_boot,TBATS_boot_mean,
+#               modelo_vigente,exp_curmodel,"TBATS+Bootstrap")
+#MAPE(TBATS_boot_mean,verif2018_mean,"tbats_boot")
 
-plot(tbats_decomp$errors) #resíduos
-sd_tbats <- sd(tbats_decomp$errors)
-tsdisplay(tbats_decomp$errors, lag.max = 50)
+######################################################
+# Ajustando ARIMAs em cima da série MSTL+Bootstrap #
+######################################################
 
-Box.test(tbats_decomp$errors, type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
-tbats_dist <- fitdist(as.vector(tbats_decomp$errors),"norm")
-plot(tbats_dist)
+#cenarioHorizonte = 24
+#nCen = 50
+#
+#sim_mstl_Arima <- array(dim = c(nCen,24))
+#
+#for (i in 1:nCen){
+#  fit_mstl_Arima <- auto.arima(mstl_365_montecarlo_total[i,])
+#  sim_mstl_Arima[i,] <- simulate(fit_mstl_Arima, nsim = 24, seed = i, 
+#                                 future = TRUE)
+#  #fc_mstl_Arima <- forecast(fit_mstl_Arima, h=24)
+#  #sim_mstl_Arima[i,] <- fc_mstl_Arima$mean[1:24]
+#}
+#
+#matplot(x = t(sim_mstl_Arima), type = "l", lty = 1, col = "grey", ylim = c(0,1),
+#        main = "MSTL+ARIMA Simulations", 
+#        xlab = "Horizonte horário",
+#        ylab = "Fator de Carga para o NE")
+#lines(apply(sim_mstl_Arima, 2, mean), lwd = 2, col = "red")
 
-tbats_signal <- tbats_components[,2] + tbats_components[,3]+tbats_components[,4]
-
-remainder_mc(100,tbats_signal,0,sd_tbats,"TBATS")
-MBB_function(100,tbats_signal,tbats_decomp$errors,48,31,T,"TBATS")
-benchmark_comp(TBATS_boot,TBATS_boot_mean,
-               modelo_vigente,exp_curmodel,"TBATS+Bootstrap")
-MAPE(TBATS_boot_mean,verif2018_mean,"tbats_boot")
 
 # 
 # ##
