@@ -80,6 +80,52 @@ remainder_mc(100,mstl_agg,0,sd_mstl) #Monta 2 gráficos
 MBB_function(100,mstl_agg,mstl_res,l = 48,31,T) #Monta 2 gráficos
 
 ######################################################
+# ARIMA #
+######################################################
+#AutoArima
+fit_arima <- auto.arima(series)
+summary(fit_arima)
+tsdisplay(residuals(fit_arima),lag.max = 100)
+
+#Ajustado - sobrefixacao
+fit_arima2 <- Arima(series,order=c(4,1,1),seasonal=list(order=c(2,0,1),period=24))
+summary(fit_arima2)
+tsdisplay(residuals(fit_arima2),lag.max=100)
+
+simArima = arima.sim(model = fit_arima, n = 100, rand.gen = rnorm) #arima.sim não simula modelos 
+
+cenarioHorizonte = 24
+nCen = 100
+
+# Cadeia de Markov --------------------------------------------------------
+simArima <- array(dim = c(nCen,24))
+
+for (i in 1:nCen){
+  simArima[i,] <- simulate(fit_arima2, nsim = 24, seed = i, future = TRUE)
+}
+
+matplot(x = t(simArima), type = "l", lty = 1, col = "grey", ylim = c(0,1),
+        main = "Ruídos | Cadeia de Markov | Cenários sintéticos condicionados", 
+        xlab = "Horizonte horário",
+        ylab = "Fator de Carga para o NE")
+lines(apply(simArima, 2, mean), lwd = 2, col = "red")
+
+
+# ARIMA + Bootstrap ---------------------------------------------------------------
+simArima_bt <- array(dim = c(nCen,24))
+for (i in 1:nCen){
+  simArima_bt[i,] <- simulate(fit_arima2, nsim = 24, bootstrap = T, 
+                              innov = NULL, seed = i)
+}
+
+matplot(x = t(simArima_bt), type = "l", lty = 1, col = "grey", ylim = c(0,1),
+        main = "Ruídos | Bootstrap | Cenários sintéticos condicionados", 
+        xlab = "Horizonte horário",
+        ylab = "Fator de Carga para o NE")
+lines(apply(simArima_bt, 2, mean), lwd = 2, col = "red")
+
+
+######################################################
 # Comparando com Modelo Vigente #
 ######################################################
 prob_curmodel = modelo_vigente[,26]
@@ -96,6 +142,13 @@ benchmark_comp(montecarlo_series,montecarlo_series_mean,modelo_vigente,
 benchmark_comp(amostras_boot_MBB,amostras_boot_MBB_mean,modelo_vigente,
                exp_curmodel,"MSTL+Bootstrap")
 
+#Comparando ARIMA+MonteCarlo
+benchmark_comp(simArima,apply(simArima, 2, mean),modelo_vigente,
+               exp_curmodel,"ARIMA+MonteCarlo")
+
+#Comparando ARIMA+Bootstrap
+benchmark_comp(simArima_bt,apply(simArima_bt, 2, mean),modelo_vigente,
+               exp_curmodel,"ARIMA+Bootstrap")
 
 ######################################################
 # Comparando com a série verificada out-of-sample #
@@ -113,6 +166,8 @@ plot(verif2018,type="l",ylim=c(0,1))
 observedvalues_comp(verif2018_m,modelo_vigente,"Current Model")
 observedvalues_comp(verif2018_m,montecarlo_series,"MSTL+MonteCarlo")
 observedvalues_comp(verif2018_m,amostras_boot_MBB,"MSTL+Bootstrap")
+observedvalues_comp(verif2018_m,simArima,"ARIMA+MonteCarlo")
+observedvalues_comp(verif2018_m,simArima_bt,"ARIMA+Bootstrap")
 
 #Comparação Todos Modelos
 plot(verif2018_m[1,], type = "l",ylim = c(0,1),col="gray",xlab="Hour",
@@ -135,9 +190,17 @@ legend("topright", legend = c("Observed Values 2018","Current Model",
 ######################################################
 
 #MAPE total
-mape_curmodel = mean(abs((exp_curmodel-verif2018_mean)/(verif2018_mean)))*100
-mape_mstl_montecarlo = mean(abs((montecarlo_series_mean-verif2018_mean)/(verif2018_mean)))*100
-mape_mstl_boot = mean(abs((amostras_boot_MBB_mean-verif2018_mean)/(verif2018_mean)))*100
+MAPE <- function(model_mean,observed_mean,label){
+  mape = mean(abs((model_mean-observed_mean)/(observed_mean)))*100
+  name = paste("mape_",label,sep="")
+  assign(name,mape,envir = .GlobalEnv)
+}
+
+MAPE(exp_curmodel,verif2018_mean,"curmodel")
+MAPE(montecarlo_series_mean,verif2018_mean,"mstl_montecarlo")
+MAPE(amostras_boot_MBB_mean,verif2018_mean,"mstl_boot")
+MAPE(apply(simArima, 2, mean),verif2018_mean,"arima_montecarlo")
+MAPE(apply(simArima_bt, 2, mean),verif2018_mean,"arima_boot")
 
 #MAPE horário
 windowmape <- function(model_mean,verified_mean,window)
@@ -152,15 +215,21 @@ windowmape <- function(model_mean,verified_mean,window)
 hmape_curmodel <- windowmape(exp_curmodel,verif2018_mean,24)
 hmape_mstl_montecarlo <- windowmape(montecarlo_series_mean,verif2018_mean,24)
 hmape_mstl_boot <- windowmape(amostras_boot_MBB_mean,verif2018_mean,24)
+hmape_arima_mc <- windowmape(apply(simArima, 2, mean),verif2018_mean,24)
+hmape_arima_boot <- windowmape(apply(simArima_bt, 2, mean),verif2018_mean,24)
+
 
 plot(hmape_curmodel,type="l",lwd=2,xlab="Hour", ylab="MAPE (%)",ylim = c(0,40), 
      main = "Hourly MAPE",col = "red")
 lines(hmape_mstl_montecarlo,type = "l",lwd=2, col = "blue")
-lines(hmape_mstl_boot,type = "l", lwd=2, col = "green")
+lines(hmape_mstl_boot,type = "l", lwd=2, col = "cyan", lty=2)
+lines(hmape_arima_mc,type = "l",lwd=2, col = "dark green")
+lines(hmape_arima_boot,type = "l", lwd=2, col = "green", lty=2)
 axis(side=1, at=c(0,1:24))
-legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"),
-       bty="n", xpd=T,lty=c(1,1,1), horiz=F,
-       col=c("red","blue","green"),lwd = c(2,2,2))
+legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap",
+                              "ARIMA+MonteCarlo","ARIMA+Bootstrap"),
+       bty="n", xpd=T,lty=c(1,1,2,1,2), horiz=F,
+       col=c("red","blue","cyan","dark green","green"),lwd = c(2,2,2))
 
 ######################################################
 # Decompondo via TBATS #
