@@ -12,38 +12,19 @@ library(fitdistrplus)
 library(logspline)
 library(colorspace)
 # https://otexts.org/fpp2/forecasting-decomposition.html
-###############################################################################
-# FUNÁ√O PARA CONSTRU«√O DOS GR¡FICOS DE FORECAST ERRORS ######################
-plotForecastErrors <- function(forecasterrors)
-{
-  # make a histogram of the forecast errors:
-  mybinsize <- IQR(forecasterrors)/4
-  mysd   <- sd(forecasterrors)
-  mymin  <- min(forecasterrors) - mysd*5
-  mymax  <- max(forecasterrors) + mysd*3
-  # generate normally distributed data with mean 0 and standard deviation mysd
-  mynorm <- rnorm(10000, mean=0, sd=mysd)
-  mymin2 <- min(mynorm)
-  mymax2 <- max(mynorm)
-  if (mymin2 < mymin) { mymin <- mymin2 }
-  if (mymax2 > mymax) { mymax <- mymax2 }
-  # make a red histogram of the forecast errors, with the normally distributed data overlaid:
-  mybins <- seq(mymin, mymax, mybinsize)
-  hist(forecasterrors, col="red", freq=FALSE, breaks=mybins, xlab = "ResÌduos", ylab = "Densidade")
-  # freq=FALSE ensures the area under the histogram = 1
-  # generate normally distributed data with mean 0 and standard deviation mysd
-  myhist <- hist(mynorm, plot=FALSE, breaks=mybins)
-  # plot the normal curve as a blue line on top of the histogram of forecast errors:
-  points(myhist$mids, myhist$density, type="l", col="blue", lwd=2)
-}
+source("./Functions/plotForecastErrors.R")
+source("./Functions/MonteCarlo_sim.R")
+source("./Functions/MBB_sim.R")
+source("./Functions/Benchmark_comparison.R")
+source("./Functions/observedvalues_comparison.R")
 
 ######################################################
 # Leitura dos dados #
 ######################################################
 path <- getwd()
-csv = read.csv2("./fcapacidade.csv",header=FALSE) #SÈrie HistÛrica de f. de capacidade
-verif2018 <- as.matrix(read.csv2("./2018_verified.csv",header=F)) #Valores verificados em jan/2018
-modelo_vigente <- as.matrix(read.csv2("./Modelo_Vigente.csv")) #SÈries usadas no modelo vigente
+csv = read.csv2("./Data/fcapacidade.csv",header=FALSE) #SÈrie HistÛrica de f. de capacidade
+verif2018 <- as.matrix(read.csv2("./Data/2018_verified.csv",header=F)) #Valores verificados em jan/2018
+modelo_vigente <- as.matrix(read.csv2("./Data/Modelo_Vigente.csv")) #SÈries usadas no modelo vigente
 
 ######################################################
 # An·lise da DistribuiÁ„o da sÈrie #
@@ -88,54 +69,6 @@ tsdisplay(mstl_decomp[,4])
 ######################################################
 # MSTL + MonteCarlo #
 ######################################################
-remainder_mc <- function(n_series,sinal,mean_mc,sd_mc)
-{
-  #n_series <- 1000
-  # = 1 #N˙mero de dias para considerar os cen·rios
-  mc_mstl_series <- array(dim = c(n_series,744))
-  monthly_mean_mstl_series <- array(dim = c(n_series,744))
-  
-  plot(mstl_agg[1:744], type = "l",ylim = c(0,1), col="blue",
-       ylab = "Capacity Factor", xlab = "Hour")
-  for (i in 1:n_series){
-    set.seed(i^2);mc_mstl_series[i,] <- mstl_agg_jan + 
-      rnorm(n = 744, mean_mc, sd_mc)
-    mstl_series_matrix <- transpose(data.table(as.matrix(mc_mstl_series[i,])))
-    monthly_mean_mstl_series[i,] <- colMeans(mstl_series_matrix)
-    lines(mc_mstl_series[i,1:744],ylim = c(0,1), type = "l", 
-          col=alpha("gray",0.5))
-  }
-  
-  fan(mc_mstl_series, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
-  lines(colMeans(mc_mstl_series),ylim = c(0,1), type = "l", col = "black", lw = 2)
-  axis(side=1, at=c(0,1:24))
-  
-  mc_distr <- array(dim = c(31*n_series,24))
-  #DistribuiÁ„o de fatores de capacidade para cada hora do mÍs [31*n_series,24]
-  mc_mstl_distr <- array(dim = c(31*n_series,24))
-  for (i in 1:24){
-    for (s in 1:n_series){
-      for (d in 1:31){
-        
-        mc_distr[(s-1)*31+d,i] <- mc_mstl_series[s,(d-1)*24+i] 
-        mc_mstl_distr[(s-1)*31+d,i] <- mc_mstl_series[s,(d-1)*24+i] 
-      }
-    }
-  }
-  
-  monthly_expscen_mstl <- colMeans(mc_mstl_distr) #Valor esperado dos cen·rios para um dia tÌpico
-  
-  assign("montecarlo_series",mc_mstl_distr, envir= .GlobalEnv)
-  assign("montecarlo_series_mean",monthly_expscen_mstl,envir= .GlobalEnv)
-  
-  #Outras opÁıes para fanplot
-  plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue",
-       ylab = "Capacity Factor", xlab = "Hour")
-  fan(mc_distr[,1:24],fan.col = sequential_hcl,ln=c(5, 25, 50, 75, 95))
-  axis(side=1, at=c(0,1:24))
-  #fan(mc_distr,ln=c(5, 25, 50, 75, 95), style = "spaghetti",n.spag = 100)
-  #fan(mc_mstl_distr, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
-}
 
 remainder_mc(100,mstl_agg,0,sd_mstl) #Monta 2 gr·ficos
 
@@ -143,49 +76,7 @@ remainder_mc(100,mstl_agg,0,sd_mstl) #Monta 2 gr·ficos
 # MSTL + Bootstrap #
 ######################################################
 
-MBB_function <- function(n_series,sinal,residuos,l)
-{
-  n = length(residuos)
-  #l = 48
-  b = n - l + 1
-  bloco = NULL
-  for (i in 1:b) {
-    bloco = cbind(bloco, residuos[i:(i + l - 1)])
-  }
-  blocos = as.matrix(bloco)
-  simulacoes_boot_MBB = amostras_boot_MBB = matrix(NA, ncol = n_series, nrow = n)
-  for (i in 1:n_series) {
-    set.seed(i);selecao = sample(1:dim(bloco)[2], ceiling(n/l), replace = T)
-    ruido.bs.prel = c(blocos[, selecao])
-    ruido.bs = ruido.bs.prel[(length(ruido.bs.prel) - length(residuos) + 1):length(ruido.bs.prel)]
-    simulacoes_boot_MBB[, i] = ruido.bs
-    amostras_boot_MBB[, i] = sinal + simulacoes_boot_MBB[, i]
-  }
-  
-  amostras_boot_MBB <- as.matrix(transpose(data.table(amostras_boot_MBB[1:24,])))
-  mstl_boot_mean <- colMeans(amostras_boot_MBB)
-  plot(mstl_boot_mean[1:24],type = "l",ylim = c(0,1),ylab = "Capacity Factor",
-       xlab = "Hour")
-  for (i in 1:n_series){
-    lines(amostras_boot_MBB[i,1:24],col=alpha("gray",0.5))
-  }
-
-  fan(amostras_boot_MBB, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
-  lines(mstl_boot_mean, lw=2)
-  axis(side=1, at=c(0,1:24))
-  
-  #fanplot #2
-  plot(mstl_boot_mean, type = "l",ylim = c(0,1), col="blue",ylab = "Capacity Factor",
-       xlab = "Hour")
-  fan(amostras_boot_MBB,fan.col = sequential_hcl,ln=c(5, 25, 50, 75, 95))
-  lines(mstl_boot_mean, type = "l",ylim = c(0,1), col="black")
-  axis(side=1, at=c(0,1:24))
-  
-  assign("amostras_boot_MBB",amostras_boot_MBB, envir= .GlobalEnv)
-  assign("amostras_boot_MBB_mean",mstl_boot_mean, envir= .GlobalEnv)
-}
-
-MBB_function(1000,mstl_agg_jan,mstl_res,l = 48) #Monta 2 gr·ficos
+MBB_function(100,mstl_agg,mstl_res,l = 48,31,F) #Monta 2 gr·ficos
 
 ######################################################
 # Comparando com Modelo Vigente #
@@ -196,58 +87,14 @@ exp_curmodel = (modelo_vigente[1,2:25]*prob_curmodel[1]+
                   modelo_vigente[2,2:25]*prob_curmodel[2]+
                   modelo_vigente[3,2:25]*prob_curmodel[3])
 
-# Current Model x MSTL+MonteCarlo
-# Comparando intervalos de confianÁa x MSTL+MonteCarlo
-plot(montecarlo_series_mean, type = "l",ylim = c(0,1), col="blue",ylab = "Capacity Factor",
-     xlab = "Hour",main = "Current Model x MSTL+MonteCarlo")
-fan(montecarlo_series,fan.col = sequential_hcl,ln=c(5, 95),lw=2)
-lines(modelo_vigente[1,2:25],col="dark red",lw=3)
-lines(modelo_vigente[2,2:25],col="red",lw=3)
-lines(modelo_vigente[3,2:25],col="orange",lw=3)
-axis(side=1, at=c(0,1:24))
+#Comparando MSTL+MonteCarlo
+benchmark_comp(montecarlo_series,montecarlo_series_mean,modelo_vigente,
+               exp_curmodel,"MSTL+MonteCarlo")
 
-#Comparando Valor Esperado dos Cen·rios
-plot(exp_curmodel, type = "l", ylim = c(0,1), col="red",ylab = "Capacity Factor",
-     xlab = "Hour", main = "Expected Value: Current Model x MSTL+MonteCarlo", lwd=2)
-lines(montecarlo_series_mean,col="blue",lw=2,lty=2)
-axis(side=1, at=c(0,1:24))
-legend("bottomright",legend = c("Current Model","MSTL+MonteCarlo"),
-       col=c("red","blue"), lwd = c(2,2), lty= c(1,2), bty="n")
+#Comparando MSTL+Bootstrap
+benchmark_comp(amostras_boot_MBB,amostras_boot_MBB_mean,modelo_vigente,
+               exp_curmodel,"MSTL+Bootstrap")
 
-
-# Current Model x MSTL+Bootstrap
-# Comparando intervalos de confianÁa x MSTL+Bootstrap
-plot(amostras_boot_MBB_mean, type = "l",ylim = c(0,1), col="blue",ylab = "Capacity Factor",
-     xlab = "Hour",main = "Current Model x MSTL+Bootstrap")
-fan(amostras_boot_MBB,fan.col = sequential_hcl,ln=c(5, 95),lw=2)
-lines(modelo_vigente[1,2:25],col="dark red",lw=3)
-lines(modelo_vigente[2,2:25],col="red",lw=3)
-lines(modelo_vigente[3,2:25],col="orange",lw=3)
-axis(side=1, at=c(0,1:24))
-
-#Comparando Valor Esperado dos Cen·rios
-plot(exp_curmodel, type = "l", ylim = c(0,1), col="red",ylab = "Capacity Factor",
-     xlab = "Hour", main = "Expected Value: Current Model x MSTL+Bootstrap", lwd=2)
-lines(amostras_boot_MBB_mean,col="blue",lw=2,lty=2)
-axis(side=1, at=c(0,1:24))
-legend("bottomright",legend = c("Current Model","MSTL+Bootstrap"),
-       col=c("red","blue"), lwd = c(2,2), lty= c(1,2), bty="n")
-
-# Comparando a densidade de distribuiÁ„o das sÈries
-#d1=density(series[1:744])
-d1=density(verif2018)
-d2=density(montecarlo_series)           
-d3=density(modelo_vigente[,2:25])
-           
-plot(d1,ylim=c(0,6), lwd = 1, xlab = "Capacity Factor",xlim=c(0,1),
-     main="Density")
-polygon(d1,col=alpha("gray",0.5))
-lines(d2, col = "blue",lty=2,lwd=2)
-lines(d3, col = "red",lwd=2)
-legend("topright", legend = c("Observed Values 2017","MSTL+Bootstrap","Current Model"),
-       bty="n", fill=c(alpha("gray",0.5), NA,NA),xpd=T,lty=c(NA,2,1),
-       border = c("black", NA,NA),horiz=F,col=c(0,"blue","red"),
-       pch = c(0,-1,-1),lwd = c(NA,2,2))
 
 ######################################################
 # Comparando com a sÈrie verificada out-of-sample #
@@ -262,8 +109,13 @@ for (d in 1:31){
 verif2018_mean <- colMeans(verif2018_m)
 plot(verif2018,type="l",ylim=c(0,1))
 
+observedvalues_comp(verif2018_m,modelo_vigente,"Current Model")
+observedvalues_comp(verif2018_m,montecarlo_series,"MSTL+MonteCarlo")
+observedvalues_comp(verif2018_m,amostras_boot_MBB,"MSTL+Bootstrap")
+
+#ComparaÁ„o Todos Modelos
 plot(verif2018_m[1,], type = "l",ylim = c(0,1),col="gray",xlab="Hour",
-     ylab="Capacity Factor",main = "Out-of-sample data x Models Used")
+     ylab="Capacity Factor",main = "Observed Values 2018 x Simulation Models")
 for(i in 2:31){
   lines(verif2018_m[i,],col = "gray")
 }
@@ -271,10 +123,11 @@ lines(verif2018_mean,type = "l", ylim = c(0,1),lwd=2, col = alpha("black",0.5))
 lines(exp_curmodel,type = "l", ylim = c(0,1),lwd=2, col = "red")
 lines(montecarlo_series_mean,type = "l", ylim = c(0,1),lwd=2, col = "blue")
 lines(amostras_boot_MBB_mean,type = "l", ylim = c(0,1),lwd=2, col = "green")
-legend("topright", legend = c("Out-of-sample data","Current Model",
+legend("topright", legend = c("Observed Values 2018","Current Model",
                               "MSTL+MonteCarlo","MSTL+Bootstrap"),
        bty="n", xpd=T,lty=c(1,1,1,1), horiz=F,
        col=c(alpha("black",0.5),"red","blue","green"),lwd = c(2,2,2,2))
+
 
 ######################################################
 # Calculando MAPE
@@ -303,6 +156,7 @@ plot(hmape_curmodel,type="l",lwd=2,xlab="Hour", ylab="MAPE (%)",ylim = c(0,40),
      main = "Hourly MAPE",col = "red")
 lines(hmape_mstl_montecarlo,type = "l",lwd=2, col = "blue")
 lines(hmape_mstl_boot,type = "l", lwd=2, col = "green")
+axis(side=1, at=c(0,1:24))
 legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"),
        bty="n", xpd=T,lty=c(1,1,1), horiz=F,
        col=c("red","blue","green"),lwd = c(2,2,2))
@@ -311,22 +165,62 @@ legend("topright", legend = c("Current Model","MSTL+MonteCarlo","MSTL+Bootstrap"
 #Criar funÁ„o para calcular MAPE de acordo com o n˙mero de sÈries
 #Avaliar bootstrap da propria sÈrie no mÍs de janeiro (bootstrapando janeiro)
 
-
 ######################################################
 # Decompondo via TBATS #
 ######################################################
+# Ficou pior do que a decomposiÁ„o MSTL
 
 #tbats_decomp <- tbats(series, seasonal.periods = c(24,8760))
 plot(tbats_decomp) #decomposiÁ„o da sÈrie
-components <- tbats.components(tbats_decomp)
+tbats_components <- tbats.components(tbats_decomp)
 
 plot(tbats_decomp$errors) #resÌduos
-sd(tbats_decomp$errors)
-tsdisplay(seasonaldecomp$errors, lag.max = 50)
+sd_tbats <- sd(tbats_decomp$errors)
+tsdisplay(tbats_decomp$errors, lag.max = 50)
 
-Box.test(seasonaldecomp$errors, type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de signific‚ncia
-plotForecastErrors(seasonaldecomp$errors)
+Box.test(tbats_decomp$errors, type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de signific‚ncia
+tbats_dist <- fitdist(as.vector(tbats_decomp$errors),"norm")
+plot(tbats_dist)
 
+tbats_signal <- tbats_components[,2] + tbats_components[,3]+tbats_components[,4]
+
+remainder_mc(100,tbats_signal,0,sd_tbats)
+MBB_function(100,tbats_signal,tbats_decomp$errors,48,31,T)
+
+######################################################
+# Testando Bootstrap + ETS #
+######################################################
+# sinal_ETS <- as.vector(array(0L,dim = 8760))
+# res_ETS <- series
+# 
+# MBB_function(100,sinal_ETS,res_ETS,48,31,F)
+# #N„o respeitou a janela dos dias...
+# 
+# ets_boot_fc <- array(dim = c(50,24))
+# for(i in 1:50){
+#   ets_boot <- auto.arima(amostras_boot_MBB_total[,i])
+#   aux <- forecast(ets_boot,24)
+#   ets_boot_fc[i,] <- aux$mean
+# }
+# 
+# ets_boot_mean <- colMeans(ets_boot_fc)
+# #Plotando os gr·ficos
+# plot(amostras_boot_MBB[1,1:24],type = "l",ylim = c(0,1),ylab = "Capacity Factor",
+#      xlab = "Hour")
+# for (i in 2:50){
+#   lines(amostras_boot_MBB[i,1:24],col=alpha("gray",0.5))
+# }
+# 
+# fan(amostras_boot_MBB[,1:24], ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
+# lines(amostras_boot_MBB_mean[1:(24*n_days)], lw=2)
+# #axis(side=1, at=c(0,1:24))
+# 
+# #fanplot #2
+# plot(mstl_boot_mean, type = "l",ylim = c(0,1), col="blue",ylab = "Capacity Factor",
+#      xlab = "Hour")
+# fan(boot_mstl_distr,fan.col = sequential_hcl,ln=c(5, 25, 50, 75, 95))
+# lines(mstl_boot_mean, type = "l",ylim = c(0,1), col="black")
+# axis(side=1, at=c(0,1:24))
 
 ######################################################
 # Testando ETS #
