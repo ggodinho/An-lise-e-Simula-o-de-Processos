@@ -38,6 +38,7 @@ adf.test(series, alternative = "explosive",k=744) #H0 (estacionaria) não rejeita
 descdist(csv[,2], discrete = FALSE) #Provavelmente Uniforme ou Normal
 fit.normal <- fitdist(csv[,2],"norm")
 plot(fit.normal)
+ks.test(x = series, y = "pnorm")
 
 
 ######################################################
@@ -65,6 +66,7 @@ plot(fit.res)
 plotForecastErrors(mstl_decomp[,4])
 Box.test(mstl_decomp[,4], type = "Ljung-Box") #se p-valor <0.05, rejeito H0 (erros iid) com 5% de significância
 tsdisplay(mstl_decomp[,4])
+ks.test(x = mstl_decomp[,4], y = "pnorm")
 
 
 ######################################################
@@ -109,7 +111,7 @@ for (i in 1:nCen){
 matplot(x = t(simArima), type = "l", lty = 1, col = "grey", ylim = c(0,1),
         main = "Ruídos | Cadeia de Markov | Cenários sintéticos condicionados", 
         xlab = "Horizonte horário",
-        ylab = "Fator de Carga para o NE")
+        ylab = "Fator de Capacidade para o NE")
 lines(apply(simArima, 2, mean), lwd = 2, col = "red")
 
 
@@ -123,7 +125,7 @@ for (i in 1:nCen){
 matplot(x = t(simArima_bt), type = "l", lty = 1, col = "grey", ylim = c(0,1),
         main = "Ruídos | Bootstrap | Cenários sintéticos condicionados", 
         xlab = "Horizonte horário",
-        ylab = "Fator de Carga para o NE")
+        ylab = "Fator de Capacidade para o NE")
 lines(apply(simArima_bt, 2, mean), lwd = 2, col = "red")
 
 
@@ -173,19 +175,34 @@ observedvalues_comp(verif2018_m,simArima,"ARIMA+MonteCarlo")
 observedvalues_comp(verif2018_m,simArima_bt,"ARIMA+Bootstrap")
 
 #Comparação Todos Modelos
-plot(verif2018_m[1,], type = "l",ylim = c(0,1),col="gray",xlab="Hour",
-     ylab="Capacity Factor",main = "Observed Values 2018 x Simulation Models")
-for(i in 2:31){
-  lines(verif2018_m[i,],col = "gray")
+#plot(verif2018_m[1,], type = "l",ylim = c(0,1),col="gray",xlab="Hour",
+     #ylab="Capacity Factor",main = "Observed Values 2018 x Simulation Models")
+#for(i in 2:31){
+#  lines(verif2018_m[i,],col = "gray")
+#}
+
+verif_2017_m <- array(dim = c(31,24))
+
+for (i in 1:24){
+  for (d in 1:31){
+      
+    verif_2017_m[d,i] <- series[(d-1)*24+i] 
+  }
 }
-lines(verif2018_mean,type = "l", ylim = c(0,1),lwd=2, col = alpha("black",0.5))
+
+plot(apply(verif_2017_m, 2, mean),type = "l", ylim = c(0,1),lwd=2, lty = 2,
+     col = "black", ylab="Capacity Factor",xlab="Hour",
+     main = "Observed Values 2017 x Simulation Models")
 lines(modelo_vigente_exp,type = "l", ylim = c(0,1),lwd=2, col = "red")
 lines(mstl_montecarlo_mean,type = "l", ylim = c(0,1),lwd=2, col = "blue")
 lines(mstl_boot_mean,type = "l", ylim = c(0,1),lwd=2, col = "green")
-legend("topright", legend = c("Observed Values 2018","Current Model",
-                              "MSTL+MonteCarlo","MSTL+Bootstrap"),
-       bty="n", xpd=T,lty=c(1,1,1,1), horiz=F,
-       col=c(alpha("black",0.5),"red","blue","green"),lwd = c(2,2,2,2))
+lines(apply(simArima, 2, mean),type = "l", ylim = c(0,1),lwd=2, col = "purple")
+lines(apply(simArima_bt, 2, mean),type = "l", ylim = c(0,1),lwd=2, col = "pink")
+legend("topright", legend = c("Observed Values 2017","Current Model",
+                              "MSTL+MonteCarlo","MSTL+Bootstrap",
+                              "Arima+Montecarlo","Arima+Bootstrap"),
+       bty="n", xpd=T,lty=c(2,1,1,1,1,1), horiz=F,
+       col=c("black","red","blue","green","purple","pink"),lwd = c(2,2,2,2,2,2))
 
 
 ######################################################
