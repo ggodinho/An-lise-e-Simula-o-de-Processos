@@ -15,7 +15,7 @@ library(colorspace)
 # https://otexts.org/fpp2/forecasting-decomposition.html
 source("./Functions/plotForecastErrors.R")
 source("./Functions/MonteCarlo_sim.R")
-source("./Functions/MBB_sim.R")
+source("./Functions/MBB_sim2.R")
 source("./Functions/Benchmark_comparison.R")
 source("./Functions/observedvalues_comparison.R")
 
@@ -31,7 +31,7 @@ modelo_vigente <- as.matrix(read.csv2("./Data/Modelo_Vigente.csv")) #Séries usad
 # Análise da Distribuição da série #
 ######################################################
 series <- msts(csv[,2], seasonal.periods = c(24,8760))
-adf.test(series, alternative = "explosive",k=744) #H0 (estacionaria) não rejeitada com 5% de significânica. p-valor = 0,099
+adf.test(series, alternative = "explosive",k=730) #H0 (estacionaria) não rejeitada com 5% de significância. p-valor = 0,099
 
 #https://stats.stackexchange.com/questions/132652/how-to-determine-which-distribution-fits-my-data-best
 # Distribuições candidatas:
@@ -44,8 +44,8 @@ ks.test(x = series, y = "pnorm")
 ######################################################
 # Decompondo com MSTL #
 ######################################################
-mstl_decomp <- mstl(series, iterate = 10, t.window = 730)
-plot(mstl_decomp)
+mstl_decomp <- mstl(series, iterate = 10, t.window = 730, s.window = 24)
+plot(mstl_decomp, main = "MSTL Series Decomposition")
 
 mstl_agg <- mstl_decomp[,2] + mstl_decomp[,3] #Série STL (sem remainder)
 mstl_agg_jan <- array(dim = c(31,24)) #Série STL média de janeiro
@@ -91,10 +91,12 @@ fit_arima <- auto.arima(series)
 summary(fit_arima)
 tsdisplay(residuals(fit_arima),lag.max = 100)
 
+
 #Ajustado - sobrefixacao
 fit_arima2 <- Arima(series,order=c(4,1,1),seasonal=list(order=c(2,0,1),period=24))
 summary(fit_arima2)
 tsdisplay(residuals(fit_arima2),lag.max=100)
+plotForecastErrors(residuals(fit_arima2))
 
 #simArima = arima.sim(model = fit_arima, n = 100, rand.gen = rnorm) #arima.sim não simula modelos 
 
@@ -109,10 +111,11 @@ for (i in 1:nCen){
 }
 
 matplot(x = t(simArima), type = "l", lty = 1, col = "grey", ylim = c(0,1),
-        main = "Ruídos | Cadeia de Markov | Cenários sintéticos condicionados", 
-        xlab = "Horizonte horário",
-        ylab = "Fator de Capacidade para o NE")
+        main = "Simulated Series: ARIMA + Monte Carlo", 
+        xlab = "Hour",
+        ylab = "Capacity Factor")
 lines(apply(simArima, 2, mean), lwd = 2, col = "red")
+axis(side=1, at=c(0,1:24))
 
 
 # ARIMA + Bootstrap ---------------------------------------------------------------
@@ -123,10 +126,11 @@ for (i in 1:nCen){
 }
 
 matplot(x = t(simArima_bt), type = "l", lty = 1, col = "grey", ylim = c(0,1),
-        main = "Ruídos | Bootstrap | Cenários sintéticos condicionados", 
-        xlab = "Horizonte horário",
-        ylab = "Fator de Capacidade para o NE")
+        main = "Simulated Series: ARIMA + Bootstrap", 
+        xlab = "Hour",
+        ylab = "Capacity Factor")
 lines(apply(simArima_bt, 2, mean), lwd = 2, col = "red")
+axis(side=1, at=c(0,1:24))
 
 
 ######################################################
@@ -166,7 +170,8 @@ for (d in 1:31){
   }
 }
 verif2018_mean <- colMeans(verif2018_m)
-plot(verif2018,type="l",ylim=c(0,1))
+plot(verif2018,type="l",ylim=c(0,1),main = "Out-of-sample data - January/2018",
+     ylab = "Capacity Factor",xlab = "Hour")
 
 observedvalues_comp(verif2018_m,modelo_vigente,"Current Model")
 observedvalues_comp(verif2018_m,mstl_montecarlo,"MSTL+MonteCarlo")
