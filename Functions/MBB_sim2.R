@@ -9,8 +9,8 @@ MBB_function <- function(n_series,sinal,residuos,l,n_days,graf,label)
   #l = 48
   b = n - l + 1
   bloco = NULL
-  for (i in 1:b) {
-    bloco = cbind(bloco, residuos[i:(i + l - 1)])
+  for (i in 1:364) {
+    bloco = cbind(bloco, residuos[((i-1)*24+1):((i-1)*24 + l)])
   }
   blocos = as.matrix(bloco)
   simulacoes_boot_MBB = amostras_boot_MBB_ = matrix(NA, ncol = n_series, nrow = n)
@@ -20,7 +20,7 @@ MBB_function <- function(n_series,sinal,residuos,l,n_days,graf,label)
     ruido.bs = ruido.bs.prel[(length(ruido.bs.prel) - 
                                 length(residuos) + 1):length(ruido.bs.prel)]
     simulacoes_boot_MBB[, i] = ruido.bs
-    amostras_boot_MBB_[, i] = sinal[1:(24*n_days)] + simulacoes_boot_MBB[, i]
+    amostras_boot_MBB_[, i] = sinal + simulacoes_boot_MBB[, i]
   }
   
   amostras_boot_MBB <- as.matrix(transpose(data.table(amostras_boot_MBB_)))
@@ -41,7 +41,7 @@ MBB_function <- function(n_series,sinal,residuos,l,n_days,graf,label)
   mstl_boot_mean <- colMeans(boot_mstl_distr)
   assign(paste(label,"_boot",sep=""),boot_mstl_distr, envir= .GlobalEnv)
   assign(paste(label,"_boot_mean",sep=""),mstl_boot_mean, envir= .GlobalEnv)
-  assign(paste(label,"_boot_total",sep=""),amostras_boot_MBB_, envir= .GlobalEnv)
+  #assign(paste(label,"_boot_total",sep=""),amostras_boot_MBB_, envir= .GlobalEnv)
   
   if (graf == T){
     plot(amostras_boot_MBB_mean[1:(24*n_days)],type = "l",ylim = c(0,1),ylab = "Capacity Factor",
