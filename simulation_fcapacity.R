@@ -44,8 +44,9 @@ ks.test(x = series, y = "pnorm")
 ######################################################
 # Decompondo com MSTL #
 ######################################################
-mstl_decomp <- mstl(series, iterate = 10, t.window = 730, s.window = 24)
+mstl_decomp <- mstl(series, iterate = 100, t.window = 730, s.window = 365)
 plot(mstl_decomp, main = "MSTL Series Decomposition")
+plot(mstl_decomp[1:24,3], type = "l")
 
 mstl_agg <- mstl_decomp[,2] + mstl_decomp[,3] #Série STL (sem remainder)
 mstl_agg_jan <- array(dim = c(31,24)) #Série STL média de janeiro
@@ -73,14 +74,14 @@ ks.test(x = mstl_decomp[,4], y = "pnorm")
 # MSTL + MonteCarlo #
 ######################################################
 
-remainder_mc(100,mstl_agg,0,sd_mstl,day_ini = 1,n_days = 31,"mstl",
-             graf = TRUE) #Monta 2 gráficos
+remainder_mc(1000,mstl_agg,mean_mstl,sd_mstl,day_ini = 1,n_days = 31,"mstl",
+             graf = T) #Monta 2 gráficos
 
 ######################################################
 # MSTL + Bootstrap #
 ######################################################
 
-MBB_function(100,mstl_agg,mstl_res,l = 48,n_days = 31,graf = T,
+MBB_function(1000,mstl_agg,mstl_res,l = 48,n_days = 31,graf = T,
              label = "mstl") #Monta 2 gráficos
 
 ######################################################
@@ -101,7 +102,7 @@ plotForecastErrors(residuals(fit_arima2))
 #simArima = arima.sim(model = fit_arima, n = 100, rand.gen = rnorm) #arima.sim não simula modelos 
 
 cenarioHorizonte = 24
-nCen = 100
+nCen = 1000
 
 # Cadeia de Markov --------------------------------------------------------
 simArima <- array(dim = c(nCen,24))

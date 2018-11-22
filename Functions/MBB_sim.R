@@ -44,11 +44,12 @@ MBB_function <- function(n_series,sinal,residuos,l,n_days,graf,label)
   assign(paste(label,"_boot_total",sep=""),amostras_boot_MBB_, envir= .GlobalEnv)
   
   if (graf == T){
-    plot(amostras_boot_MBB_mean[1:(24*n_days)],type = "l",ylim = c(0,1),ylab = "Capacity Factor",
-         xlab = "Hour")
-    for (i in 1:n_series){
-      lines(amostras_boot_MBB[i,1:(24*n_days)],col=alpha("gray",0.5))
-    }
+    matplot(x = t(amostras_boot_MBB[,1:(24*n_days)]), type = "l", 
+            lty = 1, col=alpha("gray",0.5), ylim = c(0,1),
+            main = "Simulated Series: MSTL + MBB", 
+            xlab = "Hour",
+            ylab = "Capacity Factor")
+    
     
     fan(amostras_boot_MBB[,1:(24*n_days)], ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
     lines(amostras_boot_MBB_mean[1:(24*n_days)], lw=2)

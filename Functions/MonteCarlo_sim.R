@@ -9,12 +9,7 @@ remainder_mc <- function(n_series,sinal,mean_mc,sd_mc,day_ini,n_days,label,graf)
   # = 1 #Número de dias para considerar os cenários
   mc_mstl_series <- array(dim = c(n_series,len_days))
   monthly_mean_mstl_series <- array(dim = c(n_series,len_days))
-  
-  
-  if(graf == TRUE){
-    plot(0, type = "l",ylim = c(0,1), col= alpha("black",0),
-         ylab = "Capacity Factor", xlab = "Hour", xlim = c(1,len_days))
-  }
+
   
   for (i in 1:n_series){
     set.seed(i^2);mc_mstl_series[i,] <- 
@@ -22,11 +17,6 @@ remainder_mc <- function(n_series,sinal,mean_mc,sd_mc,day_ini,n_days,label,graf)
       rnorm(n = len_days, mean_mc, sd_mc)
     mstl_series_matrix <- transpose(data.table(as.matrix(mc_mstl_series[i,])))
     monthly_mean_mstl_series[i,] <- colMeans(mstl_series_matrix)
-    
-    if(graf == TRUE){
-      lines(mc_mstl_series[i,1:len_days],ylim = c(0,1), type = "l", 
-            col=alpha("gray",0.5))
-    }
   }
   
 
@@ -50,13 +40,20 @@ remainder_mc <- function(n_series,sinal,mean_mc,sd_mc,day_ini,n_days,label,graf)
   assign(paste(label,"_montecarlo_total",sep=""),mc_mstl_series, envir= .GlobalEnv)
   
   if(graf == TRUE){
+    matplot(x = t(mc_mstl_series[,1:len_days]), type = "l", 
+            lty = 1, col=alpha("gray",0.5), ylim = c(0,1),
+            main = "Simulated Series: MSTL + Monte Carlo", 
+            xlab = "Hour",
+            ylab = "Capacity Factor")
+    
     fan(mc_mstl_series, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
     lines(colMeans(mc_mstl_series),ylim = c(0,1), type = "l", col = "black", lw = 2)
     #axis(side=1, at=c(0,1:24))
     #Outras opções para fanplot
     plot(monthly_expscen_mstl, type = "l",ylim = c(0,1), col="blue",
          ylab = "Capacity Factor", xlab = "Hour")
-    fan(mc_distr[,1:24],fan.col = sequential_hcl,ln=c(5, 25, 50, 75, 95))
+    fan(mc_distr[,1:24],fan.col = sequential_hcl,ln=c(5, 25, 50, 75, 95),
+        ln.col="red")
     axis(side=1, at=c(0,1:24))
     #fan(mc_distr,ln=c(5, 25, 50, 75, 95), style = "spaghetti",n.spag = 100)
     #fan(mc_mstl_distr, ln=c(5, 25, 50, 75, 95), alpha=0,ln.col="red")
