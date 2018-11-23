@@ -2,7 +2,7 @@
 observedvalues_comp <- function(observed_values,model,
                                 label = c("Current Model","MSTL+MonteCarlo",
                                           "MSTL+Bootstrap")){
-  if (label =="Current Model"){
+  if (label =="Benchmark Model"){
     plot(observed_values[1,], type = "l",ylim = c(0,1),col=alpha("gray",0.5),xlab="Hour",
          ylab="Capacity Factor",main = paste("Observed Values 2018 x ",label,sep=""))
     for(i in 2:31){

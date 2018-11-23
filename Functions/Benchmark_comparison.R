@@ -8,6 +8,11 @@ benchmark_comp <- function(series,series_mean,benchmark,benchmark_mean,label){
   lines(benchmark[2,2:25],col="red",lw=3)
   lines(benchmark[3,2:25],col="orange",lw=3)
   axis(side=1, at=c(0,1:24))
+  legend("topleft",legend = c("Scenario 1: 29% probability",
+                              "Scenario 2: 32% probability",
+                              "Scenario 3: 39% probability"),
+          col=c("orange","red","dark red"), lwd = c(3,3,3), lty= c(1,1,1), bty="n",
+         title = "Benchmark Scenarios", cex = c(0.8,0.8,0.8))
   
   #Comparando Valor Esperado dos Cenários
   plot(benchmark_mean, type = "l", ylim = c(0,1), col="red",ylab = "Capacity Factor",
@@ -20,7 +25,7 @@ benchmark_comp <- function(series,series_mean,benchmark,benchmark_mean,label){
   
   # Comparando a densidade de distribuição das séries
   #d1=density(series[1:744])
-  d1=density(verif2018)
+  d1=density(series_2017[1:744])
   d2=density(series)           
   d3=density(benchmark[,2:25])
   
@@ -29,7 +34,7 @@ benchmark_comp <- function(series,series_mean,benchmark,benchmark_mean,label){
   polygon(d1,col=alpha("gray",0.5))
   lines(d2, col = "blue",lty=2,lwd=2)
   lines(d3, col = "red",lwd=2)
-  legend("topright", legend = c("Observed Values 2017",label,"Current Model"),
+  legend("topright", legend = c("Observed Values 2017",label,"Benchmark Model"),
          bty="n", fill=c(alpha("gray",0.5), NA,NA),xpd=T,lty=c(NA,2,1),
          border = c("black", NA,NA),horiz=F,col=c(0,"blue","red"),
          pch = c(0,-1,-1),lwd = c(NA,2,2))

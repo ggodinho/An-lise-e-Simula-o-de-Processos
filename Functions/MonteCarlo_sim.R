@@ -1,6 +1,6 @@
 # Função para simulação de MonteCarlo dos ruídos (dist. Normal)
 
-remainder_mc <- function(n_series,sinal,mean_mc,sd_mc,day_ini,n_days,label,graf)
+remainder_montecarlo <- function(n_series,sinal,mean_mc,sd_mc,day_ini,n_days,label,graf)
   #function(numero de series, série STL ou sinal, média dos ruidos, desvio padrao dos ruidos)
 {
  
